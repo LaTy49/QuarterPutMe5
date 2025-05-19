@@ -7,49 +7,44 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
+  id        String   @id @default(uuid())
   email     String   @unique
+  name      String?
   password  String
-  createdAt DateTime @map("created_at")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   orders    Order[]
 }
 
-model Category {
-  id          Int       @id @default(autoincrement())
-  name        String
-  description String?
-  products    Product[]
-}
-
 model Product {
-  id          Int         @id @default(autoincrement())
+  id          String       @id @default(uuid())
   name        String
   description String?
-  price       Decimal
-  stock       Int
-  categoryId  Int         @map("category_id")
-  category    Category    @relation(fields: [categoryId], references: [id])
+  price       Float
+  stock       Int          @default(0)
+  imageUrl    String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   orderItems  OrderItem[]
 }
 
 model Order {
-  id        Int         @id @default(autoincrement())
-  userId    Int         @map("user_id")
-  orderDate DateTime    @map("order_date")
-  status    String
-  total     Decimal
+  id        String      @id @default(uuid())
+  userId    String
   user      User        @relation(fields: [userId], references: [id])
+  status    OrderStatus @default(PENDING)
+  total     Float
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
   items     OrderItem[]
 }
 
 model OrderItem {
-  id        Int     @id @default(autoincrement())
-  orderId   Int     @map("order_id")
-  productId Int     @map("product_id")
-  quantity  Int
-  price     Decimal
+  id        String  @id @default(uuid())
+  orderId   String
   order     Order   @relation(fields: [orderId], references: [id])
+  productId String
   product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
 }
-
