@@ -1,74 +1,106 @@
+// app/api/orders/route.js
+import { prisma } from "../../../db/db" 
 import { NextResponse } from 'next/server';
 
-// GET handler for retrieving all orders
+// GET all orders
 export async function GET() {
   try {
-    // Here you would typically fetch data from your database
-    const orders = [
-      { 
-        id: 1, 
-        userId: 101, 
-        totalAmount: 125.99, 
-        status: 'completed', 
-        createdAt: '2025-05-15T10:30:00Z' 
+    const orders = await prisma.order.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        items: {
+          include: {
+            product: true,
+          },
+        },
       },
-      { 
-        id: 2, 
-        userId: 102, 
-        totalAmount: 79.50, 
-        status: 'processing', 
-        createdAt: '2025-05-16T14:45:00Z' 
-      },
-      { 
-        id: 3, 
-        userId: 103, 
-        totalAmount: 214.75, 
-        status: 'pending', 
-        createdAt: '2025-05-17T09:15:00Z' 
-      },
-    ];
-
-    return NextResponse.json({ orders }, { status: 200 });
+    });
+    
+    return NextResponse.json(orders);
   } catch (error) {
-    console.error('Error fetching orders:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch orders' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
   }
 }
 
-// POST handler for creating a new order
-export async function POST(request: Request) {
+// POST create a new order
+export async function POST(request) {
   try {
-    // Parse the request body
     const body = await request.json();
-
-    // Validate required fields
-    if (!body.userId || !body.totalAmount) {
-      return NextResponse.json(
-        { error: 'User ID and total amount are required' },
-        { status: 400 }
-      );
+    const { userId, items } = body;
+    
+    // Validate input
+    if (!userId || !items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: 'User ID and at least one item are required' }, { status: 400 });
     }
-
-    // Here you would typically save the data to your database
-    const newOrder = {
-      id: Math.floor(Math.random() * 1000),
-      ...body,
-      status: body.status || 'pending',
-      createdAt: new Date().toISOString(),
-    };
-
-    return NextResponse.json(
-      { message: 'Order created successfully', order: newOrder },
-      { status: 201 }
-    );
+    
+    // Verify user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    
+    // Fetch products to verify and calculate total
+    const productIds = items.map(item => item.productId);
+    const products = await prisma.product.findMany({
+      where: {
+        id: { in: productIds },
+      },
+    });
+    
+    if (products.length !== productIds.length) {
+      return NextResponse.json({ error: 'One or more products not found' }, { status: 404 });
+    }
+    
+    // Create a map for quick product lookup
+    const productMap = {};
+    products.forEach(product => {
+      productMap[product.id] = product;
+    });
+    
+    // Calculate total and prepare order items
+    let total = 0;
+    const orderItems = items.map(item => {
+      const product = productMap[item.productId];
+      const itemTotal = product.price * item.quantity;
+      total += itemTotal;
+      
+      return {
+        productId: item.productId,
+        quantity: item.quantity,
+        price: product.price,
+      };
+    });
+    
+    // Create order with items
+    const order = await prisma.order.create({
+      data: {
+        userId,
+        total,
+        status: 'PENDING',
+        items: {
+          create: orderItems,
+        },
+      },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+    
+    return NextResponse.json(order, { status: 201 });
   } catch (error) {
-    console.error('Error creating order:', error);
-    return NextResponse.json(
-      { error: 'Failed to create order' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
   }
 }

@@ -22,6 +22,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/api/order_item/route.ts", "app/api/products/[id]/route.ts", "app/api/products/route.ts", "app/api/order/[id]/route.ts", "db/db.js", "app/api/category/[id]/route.js", "app/api/category/route.js", "app/api/order/route.js", "app/api/order_item/[id]/route.js"],
   "exclude": ["node_modules"]
 }

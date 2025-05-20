@@ -3,9 +3,8 @@ generator client {
 }
 datasource db {
   provider = "postgresql"
-  url = env("POSTGRES_URL")
+  url      = env("DATABASE_URL")
 }
-
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -22,7 +21,6 @@ model Product {
   description String?
   price       Float
   stock       Int          @default(0)
-  imageUrl    String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   orderItems  OrderItem[]
@@ -47,4 +45,21 @@ model OrderItem {
   product   Product @relation(fields: [productId], references: [id])
   quantity  Int
   price     Float
+}
+model Discount {
+  id         Int      @id @default(autoincrement())
+  name       String
+  percentage Int
+  active     Boolean
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
 }

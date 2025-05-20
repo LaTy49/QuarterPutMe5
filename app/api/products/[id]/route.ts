@@ -1,66 +1,83 @@
+// app/api/products/[id]/route.js
+import {prisma} from "../../../../db/db";
 import { NextResponse } from 'next/server';
 
-// PUT handler for updating a product by ID
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+// GET single product
+export async function GET(request, { params }) {
   try {
-    // Get the ID from route parameters
-    const id = params.id;
+    const { id } = params;
     
-    // Parse the request body
-    const body = await request.json();
-
-    // Validate required fields
-    if (!body.name && !body.price && !body.description && !body.categoryId && !body.stock) {
-      return NextResponse.json(
-        { error: 'At least one field to update is required' },
-        { status: 400 }
-      );
+    const product = await prisma.product.findUnique({
+      where: { id },
+    });
+    
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
-
-    // Here you would typically update the product in your database
-    const updatedProduct = {
-      id: Number(id),
-      ...body,
-      updatedAt: new Date().toISOString(),
-    };
-
-    return NextResponse.json(
-      { message: `Product ${id} updated successfully`, product: updatedProduct },
-      { status: 200 }
-    );
+    
+    return NextResponse.json(product);
   } catch (error) {
-    console.error('Error updating product:', error);
-    return NextResponse.json(
-      { error: 'Failed to update product' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch product' }, { status: 500 });
   }
 }
 
-// DELETE handler for removing a product by ID
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+// PUT update product
+export async function PUT(request, { params }) {
   try {
-    // Get the ID from route parameters
-    const id = params.id;
-
-    // Here you would typically delete the product from your database
-    // You might also want to check for related order items before deletion
-
-    return NextResponse.json(
-      { message: `Product ${id} deleted successfully` },
-      { status: 200 }
-    );
+    const { id } = params;
+    const body = await request.json();
+    const { name, description, price, stock, imageUrl } = body;
+    
+    // Check if product exists
+    const existingProduct = await prisma.product.findUnique({
+      where: { id },
+    });
+    
+    if (!existingProduct) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+    
+    // Prepare update data
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (price !== undefined) updateData.price = parseFloat(price);
+    if (stock !== undefined) updateData.stock = parseInt(stock);
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+    
+    // Update product
+    const updatedProduct = await prisma.product.update({
+      where: { id },
+      data: updateData,
+    });
+    
+    return NextResponse.json(updatedProduct);
   } catch (error) {
-    console.error('Error deleting product:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete product' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
+  }
+}
+
+// DELETE product
+export async function DELETE(request, { params }) {
+  try {
+    const { id } = params;
+    
+    // Check if product exists
+    const existingProduct = await prisma.product.findUnique({
+      where: { id },
+    });
+    
+    if (!existingProduct) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+    
+    // Delete product
+    await prisma.product.delete({
+      where: { id },
+    });
+    
+    return NextResponse.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
   }
 }
