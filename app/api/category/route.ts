@@ -1,35 +1,39 @@
+export const runtime = 'nodejs';
+
+import { prisma } from '../../../db/db';
 import { NextResponse } from 'next/server';
 
-// POST handler for creating a new category
+// GET all categories
+export async function GET() {
+  try {
+    const category = await prisma.category.findMany();
+    return NextResponse.json(category);
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to fetch category' }, { status: 500 });
+  }
+}
+
+// POST create a new category
 export async function POST(request: Request) {
   try {
-    // Parse the request body
     const body = await request.json();
+    const { name, description } = body;
 
-    // Validate required fields
-    if (!body.name) {
-      return NextResponse.json(
-        { error: 'Category name is required' },
-        { status: 400 }
-      );
+    // Validate input
+    if (!name) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
-    // Here you would typically save the data to your database
-    const newCategory = {
-      id: Math.floor(Math.random() * 1000),
-      ...body,
-      createdAt: new Date().toISOString(),
-    };
+    // Create category
+    const category = await prisma.category.create({
+      data: {
+        name,
+        description,
+      },
+    });
 
-    return NextResponse.json(
-      { message: 'Category created successfully', category: newCategory },
-      { status: 201 }
-    );
+    return NextResponse.json(category, { status: 201 });
   } catch (error) {
-    console.error('Error creating category:', error);
-    return NextResponse.json(
-      { error: 'Failed to create category' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });
   }
 }
